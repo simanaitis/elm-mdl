@@ -60,6 +60,7 @@ module Material.Layout
 Refer to [this site](https://debois.github.io/elm-mdl/#layout)
 for a live demo and example code.
 
+
 # Subscriptions
 
 The layout needs to be initialised with and subscribe to changes in viewport
@@ -86,8 +87,8 @@ sizes. Example initialisation of containing app:
       , update = update
       }
 
-## Tabs width
 
+## Tabs width
 
 Tabs display chevrons when the viewport is too small to show all tabs
 simultaneously. Unfortunately, Elm currently does not give us a way to
@@ -107,35 +108,50 @@ be (assuming a tab width of 1384 pixels):
       , update = update
       }
 
-
 @docs sub0, subs
 
+
 # Render
+
 @docs Contents, render, toggleDrawer
 
+
 # Options
+
 @docs Property
 
+
 ## Tabs
+
 @docs fixedTabs, rippleTabs
 @docs selectedTab, setTabsWidth
 @docs mainId
 
+
 ## Header
+
 @docs fixedHeader, fixedDrawer
 @docs waterfall, seamed, scrolling
 @docs transparentHeader
 
+
 ## Events
+
 @docs onSelectTab
 
+
 # Sub-views
+
 @docs row, spacer, title, navigation, link, href
 
+
 # Elm architecture
+
 @docs view, Msg, Model, defaultModel, update, init, subscriptions
 
+
 # Internal use
+
 @docs react
 
 -}
@@ -219,11 +235,11 @@ setTabsWidth_ width model =
         }
 
 
-{-| HTML id of main contents container. Useful for, e.g., scroll-to-top. 
+{-| HTML id of main contents container. Useful for, e.g., scroll-to-top.
 -}
 mainId : String
-mainId = 
-  "elm-mdl-layout-main"
+mainId =
+    "elm-mdl-layout-main"
 
 
 {-| Component model.
@@ -494,6 +510,7 @@ chevron on app launch.
 
 (Elm core libraries currently don't give us a good way to determine this situation
 automatically.)
+
 -}
 moreTabs : Property m
 moreTabs =
@@ -563,12 +580,14 @@ row styles =
 
 
 {-| Mode for the header.
-- A `Standard` header casts shadow, is permanently affixed to the top of the screen.
-- A `Seamed` header does not cast shadow, is permanently affixed to the top of the
-  screen.
-- A `Scroll`'ing header scrolls with contents.
-- A `Waterfall` header drops either the top (argument True) or bottom (argument False)
-header-row when content scrolls.
+
+  - A `Standard` header casts shadow, is permanently affixed to the top of the screen.
+  - A `Seamed` header does not cast shadow, is permanently affixed to the top of the
+    screen.
+  - A `Scroll`'ing header scrolls with contents.
+  - A `Waterfall` header drops either the top (argument True) or bottom (argument False)
+    header-row when content scrolls.
+
 -}
 type Mode
     = Standard
@@ -640,7 +659,8 @@ tabsView lift config model ( tabs, tabStyles ) =
             , Options.div
                 [ cs "mdl-layout__tab-bar"
                 , css "position" "relative"
-                  -- Workaround for debois/elm-dom#4.
+
+                -- Workaround for debois/elm-dom#4.
                 , css "scroll-behavior" "smooth"
                 , if config.rippleTabs then
                     Options.many
@@ -780,20 +800,22 @@ drawerButton lift isVisible =
                     "false"
                 )
             , tabindex 1
-              {- No-one else is putting events on the drawerbutton, so we don't
-                 need to go through dispatch here.
-              -}
+
+            {- No-one else is putting events on the drawerbutton, so we don't
+               need to go through dispatch here.
+            -}
             , Events.onClick (lift ToggleDrawer)
             , Events.onWithOptions
                 "keydown"
                 { stopPropagation = False
                 , preventDefault =
                     False
-                    --  True
-                    {- Should stop propagation exclusively on ENTER, but elm
-                       currently require me to decide on options before the keycode
-                       value is available.
-                    -}
+
+                --  True
+                {- Should stop propagation exclusively on ENTER, but elm
+                   currently require me to decide on options before the keycode
+                   value is available.
+                -}
                 }
                 (Decoder.map
                     (lift
@@ -857,19 +879,21 @@ The `header` and `drawer` contains the contents of the header rows and drawer,
 respectively. Use `row`, `spacer`, `title`, `nav`, and `link`, as well as
 regular Html to construct these. The `tabs` contains
 the title of each tab.
+
 -}
 type alias Contents m =
     { header : List (Html m)
     , drawer : List (Html m)
     , tabs : ( List (Html m), List (Style m) )
     , main : List (Html m)
+    , footer : List (Html m)
     }
 
 
 {-| Main layout view.
 -}
 view : (Msg -> m) -> Model -> List (Property m) -> Contents m -> Html m
-view lift model options { drawer, header, tabs, main } =
+view lift model options { drawer, header, tabs, main, footer } =
     let
         summary =
             Internal.collect defaultConfig options
@@ -931,11 +955,12 @@ view lift model options { drawer, header, tabs, main } =
                         , ( "mdl-layout--fixed-header", config.fixedHeader && hasHeader )
                         , ( "mdl-layout--fixed-tabs", config.fixedTabs && hasTabs )
                         ]
-                   {- MDL has code to close drawer on ESC, but it seems to be
-                      non-operational. We fix it here. Elm 0.17 doesn't give us a way to
-                      catch global keyboard events, but we can reasonably assume something inside
-                      mdl-layout__container is focused.
-                   -}
+
+                 {- MDL has code to close drawer on ESC, but it seems to be
+                    non-operational. We fix it here. Elm 0.17 doesn't give us a way to
+                    catch global keyboard events, but we can reasonably assume something inside
+                    mdl-layout__container is focused.
+                 -}
                  , if drawerIsVisible then
                     on "keydown"
                         (Decoder.map
@@ -970,11 +995,13 @@ view lift model options { drawer, header, tabs, main } =
                     Just ( "elm-mdl-obfuscator", obfuscator lift drawerIsVisible )
                 , contentDrawerButton |> Maybe.map ((,) "elm-drawer-button")
                 , Options.styled main_
-                    [ id mainId 
+                    [ id mainId
                     , cs "mdl-layout__content"
                     , css "overflow-y" "visible" |> when (config.mode == Scrolling && config.fixedHeader)
                     , css "overflow-x" "visible" |> when (config.mode == Scrolling && config.fixedHeader)
-                    , css "overflow" "visible" |> when (config.mode == Scrolling && config.fixedHeader) {- Above three lines fixes upstream bug #4180. -}
+                    , css "overflow" "visible" |> when (config.mode == Scrolling && config.fixedHeader)
+
+                    {- Above three lines fixes upstream bug #4180. -}
                     , when
                         (isWaterfall config.mode)
                         ((on "scroll" >> Internal.attribute)
@@ -988,6 +1015,10 @@ view lift model options { drawer, header, tabs, main } =
                     |> (,) (toString config.selectedTab)
                     |> Just
                 ]
+            , if List.length footer > 0 then
+                div [] footer
+              else
+                div [] []
             ]
 
 
@@ -1034,6 +1065,7 @@ Excerpt:
       , tabs = (tabTitles, [])
       , main = [ MyComponent.view model ]
     }
+
 -}
 render :
     (Component.Msg button textfield menu Msg toggles tooltip tabs dispatch -> m)
@@ -1072,6 +1104,7 @@ sub0 lift =
 
 This function is for use with component typing. For plain TEA, simply issue
 an update for the exposed Msg `ToggleDrawer`.
+
 -}
 toggleDrawer :
     (Component.Msg button textfield menu Msg toggles tooltip tabs dispatch -> m)
@@ -1084,6 +1117,7 @@ toggleDrawer lift =
 
 This function is for use with shorthands. For plain TEA, simply set the
 `tabsWidth` field in Model.
+
 -}
 setTabsWidth : Int -> Store s -> Store s
 setTabsWidth w container =
