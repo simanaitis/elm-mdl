@@ -1,5 +1,5 @@
 {
-    "version": "1.0.1",
+    "version": "1.0.2",
     "summary": "Fork of Material Design Lite port to Elm",
     "repository": "https://github.com/simanaitis/elm-mdl.git",
     "license": "Apache License, version 2.0",

@@ -1014,11 +1014,11 @@ view lift model options { drawer, header, tabs, main, footer } =
                     main
                     |> (,) (toString config.selectedTab)
                     |> Just
+                , if (List.length footer > 0) then
+                    Just ( "mdl-mini-footer", Options.styled Html.footer [] footer )
+                  else
+                    Nothing
                 ]
-            , if List.length footer > 0 then
-                div [] footer
-              else
-                div [] []
             ]
 
 
