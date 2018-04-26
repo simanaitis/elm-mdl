@@ -40,9 +40,10 @@ for a live demo.
 
 import Html exposing (Attribute, Html)
 import Html.Attributes
+import Html.Events
 import Material.Options as Options exposing (cs)
 import Material.Icon as Icon
-import Material.Options.Internal as Internal
+import Material.Internal.Options as Internal
 import Material.Helpers as Helpers
 import Json.Decode as Json
 
@@ -106,11 +107,19 @@ NOTE. This stops propagation and prevents default to stop `onClick` from being
 called when this is clicked.
 -}
 deleteClick : msg -> Property msg
-deleteClick msg =
-    Options.onWithOptions
-      "click" 
-       { stopPropagation = True, preventDefault = True }
-       (Json.succeed msg)
+deleteClick =
+    Internal.option
+        << (\msg config ->
+                { config
+                    | deleteClick =
+                        Just
+                            (Html.Events.onWithOptions "click"
+                                { stopPropagation = True, preventDefault = True }
+                                (Json.succeed msg)
+                            )
+                }
+           )
+
 
 type alias Priority =
     Int
@@ -215,6 +224,9 @@ getActionElement config =
 
 
 {-| Creates a chip using `Html.button`
+
+NOTE. If a chip contains an action, like delete, a `Html.span` will be used even
+if you use this function.
 -}
 button : List (Property msg) -> List (Content msg) -> Html msg
 button props =
@@ -262,8 +274,14 @@ chip element props items =
 
         isContact =
             List.any (\x -> priority x == 0) items
+
+        actualElement =
+            if isDeletable then
+                Html.span
+            else
+                element
     in
-        Options.styled element
+        Options.styled actualElement
             ([ cs "mdl-chip"
              , Options.when isContact (cs "mdl-chip--contact")
              , Options.when isDeletable (cs "mdl-chip--deletable")
@@ -271,7 +289,8 @@ chip element props items =
              , Internal.attribute <| Helpers.blurOn "mouseleave"
              , Internal.attribute <| Helpers.blurOn "touchend"
              ]
-                ++ props)
+                ++ props
+            )
             content
 
 

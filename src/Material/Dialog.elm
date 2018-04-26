@@ -35,7 +35,7 @@ for a live demo.
 import Html exposing (..)
 import Html.Attributes
 import Material.Options as Options exposing (Style, Property, cs)
-import Material.Options.Internal as Internal
+import Material.Internal.Options as Internal
 
 
 {-| Option to `actions`. If set, each control takes up the full width of the

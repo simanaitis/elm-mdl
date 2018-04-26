@@ -51,7 +51,7 @@ for a live demo.
 import Html exposing (..)
 import Html.Attributes as Html
 import Material.Options as Options exposing (cs, css, when)
-import Material.Options.Internal as Internal
+import Material.Internal.Options as Internal
 import Material.Helpers as Helpers
 import Json.Decode as Json
 
@@ -203,6 +203,8 @@ view options =
                 , cs "is-lowest-value" |> when (fraction == 0)
                   -- FIX for Firefox problem where you had to click on the 2px tall slider to initiate drag
                 , css "padding" "8px 0"
+                  -- FIX for MS Edge problem with input "range" height not depending on thumb height and clipping it
+                , css "min-height" "20px"
                 , Internal.attribute <| Html.type_ "range"
                 , Internal.attribute <| Html.max (toString config.max)
                 , Internal.attribute <| Html.min (toString config.min)

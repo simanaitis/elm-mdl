@@ -146,7 +146,7 @@ import Html exposing (Html, Attribute)
 import Html.Attributes
 import Html.Events
 import Json.Decode as Json
-import Material.Options.Internal as Internal exposing (..)
+import Material.Internal.Options as Internal exposing (..)
 
 
 
@@ -270,7 +270,7 @@ many =
 presence of Options depends dynamically on other values, e.g.,
 
     Options.div
-      [ if model.isActive then css "active" else nop ]
+      [ if model.isActive then cs "active" else nop ]
       [ ... ]
 -}
 nop : Property c m
@@ -305,7 +305,6 @@ maybe prop =
     prop |> Maybe.withDefault nop
 
 
-
 -- CONVENIENCE
 
 
@@ -332,25 +331,6 @@ Instead use `Options.on` and variants.
 -}
 attribute : Html.Attribute m -> Property c m
 attribute =
-    Attribute
-
-
-{-| Install arbitrary `Html.Attribute`. Use like this:
-
-    Options.div
-      [ Options.attr <| Html.onClick MyClickEvent ]
-      [ ... ]
-
-**NOTE** Some attributes might be overridden by attributes
-used internally by *elm-mdl*. Such attributes often include
-`focus` and `blur` on certain elements, such as `Textfield`.
-In the case of `focus` and `blur` you may use `focusin` and `focusout`
-respectively instead (these attributes require polyfill on Firefox).
-
-See [Textfield.onBlur](http://package.elm-lang.org/packages/debois/elm-mdl/latest/Material-Textfield#onBlur) for more information regarding the polyfill.
--}
-attr : Html.Attribute m -> Property c m
-attr =
     Attribute
 
 
@@ -396,7 +376,6 @@ input =
 container : List (Style m) -> Property (Container c m) m
 container =
     Internal.container
-
 
 
 -- EVENTS

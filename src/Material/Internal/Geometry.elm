@@ -1,7 +1,8 @@
-module Material.Menu.Geometry
+module Material.Internal.Geometry
     exposing
         ( Geometry
         , Element
+        , element
         , decode
         )
 

@@ -75,12 +75,14 @@ for details about what type of buttons are appropriate for which situations.
 
 -}
 
-import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html exposing (..)
 import Material.Component as Component exposing (Indexed, Index)
 import Material.Helpers as Helpers
-import Material.Options as Options exposing (cs, when)
-import Material.Options.Internal as Internal
+import Material.Internal.Button exposing (Msg)
+import Material.Internal.Options as Internal
+import Material.Msg
+import Material.Options as Options exposing (cs, css, when)
 import Material.Ripple as Ripple
 
 -- MODEL
@@ -102,11 +104,10 @@ defaultModel =
 
 -- ACTION, UPDATE
 
-
 {-|
 -}
 type alias Msg =
-    Ripple.Msg
+    Material.Internal.Button.Msg
 
 
 {-| Component update.
@@ -122,14 +123,16 @@ update action =
 
 type alias Config =
     { ripple : Bool
-    , link : Bool
+    , link : Maybe String
+    , disabled : Bool
     }
 
 
 defaultConfig : Config
 defaultConfig =
     { ripple = False
-    , link = False
+    , link = Nothing
+    , disabled = False
     }
 
 
@@ -144,18 +147,14 @@ This allows for a button that looks like a button but can also
 perform link actions.
 
     Button.render Mdl [0] model.mdl
-      [ Button.link
-      , Options.attribute <|
-          Html.Attributes.href "#some-url"
+      [ Button.link "#some-url"
       ]
       [ text "Link Button" ]
 -}
 link : String -> Property m
 link href =
-  Options.many 
-    [ Internal.option (\options -> { options | link = True })
-    , Internal.attribute <| Html.Attributes.href href 
-    ]
+    (\options -> { options | link = Just href })
+        |> Internal.option
 
 
 {-| Set button to ripple when clicked.
@@ -170,7 +169,8 @@ ripple =
 -}
 disabled : Property m
 disabled =
-    Internal.attribute <| Html.Attributes.disabled True
+    (\options -> { options | disabled = True })
+        |> Internal.option
 
 
 {-| Plain, uncolored button (default).
@@ -204,7 +204,7 @@ accent =
 {-| Sets the type of the button e.g.
 
     Button.render ...
-      [ Button.type' "submit"
+      [ Button.type_ "submit"
       ]
       [ ... ]
 -}
@@ -240,10 +240,10 @@ blurAndForward event =
 {-| Component view function.
 -}
 view : (Msg -> m) -> Model -> List (Property m) -> List (Html m) -> Html m
-view lift model config html =
+view lift model options html =
     let
-        summary =
-            Internal.collect defaultConfig config
+        ({ config } as summary) =
+            Internal.collect defaultConfig options
 
         listeners =
             Options.many
@@ -256,17 +256,24 @@ view lift model config html =
                 ]
     in
         Internal.apply summary
-            (if summary.config.link then Html.a else Html.button)
+            (if config.link /= Nothing then Html.a else Html.button)
             [ cs "mdl-button"
             , cs "mdl-js-button"
             , cs "mdl-js-ripple-effect" |> when summary.config.ripple
+            , css "box-sizing" "border-box"
             , listeners
+            , Internal.attribute (Html.Attributes.href (Maybe.withDefault "" config.link) )
+                |> when ((config.link /= Nothing) && not config.disabled)
+            , Internal.attribute (Html.Attributes.disabled True)
+                |> when config.disabled
+            , cs "mdl-button--disabled"
+                |> when config.disabled
             ]
             [ Helpers.blurOn "mouseup"
             , Helpers.blurOn "mouseleave"
             , Helpers.blurOn "touchend"
             ]
-            (if summary.config.ripple then
+            (if config.ripple then
                 List.concat
                     [ html
                     , [ Html.map lift <|
@@ -367,7 +374,10 @@ fab =
 -}
 minifab : Property m
 minifab =
-    cs "mdl-button--mini-fab"
+    Options.many
+        [ cs "mdl-button--mini-fab"
+        , fab
+        ]
 
 
 {-| The [Material Design Lite implementation](https://www.getmdl.io/components/index.html#buttons-section)
@@ -405,13 +415,13 @@ type alias Store s =
 {-| Component react function (update variant). Internal use only.
 -}
 react :
-    (Component.Msg Msg textfield menu layout toggles tooltip tabs dispatch -> m)
+    (Material.Msg.Msg m -> m)
     -> Msg
     -> Index
     -> Store s
     -> ( Maybe (Store s), Cmd m )
 react =
-    Component.react get set Component.ButtonMsg (Component.generalise update)
+    Component.react get set Material.Msg.ButtonMsg (Component.generalise update)
 
 
 {-| Component render.  Below is an example, assuming boilerplate setup as
@@ -425,11 +435,11 @@ indicated in `Material` and a user message `PollMsg`.
       [ text "Fetch new" ]
 -}
 render :
-    (Component.Msg Msg textfield menu snackbar toggles tooltip tabs dispatch -> m)
+    (Material.Msg.Msg m -> m)
     -> Index
     -> { a | button : Indexed Ripple.Model }
     -> List (Property m)
     -> List (Html m)
     -> Html m
 render =
-    Component.render get view Component.ButtonMsg
+    Component.render get view Material.Msg.ButtonMsg

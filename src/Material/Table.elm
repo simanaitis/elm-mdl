@@ -37,10 +37,10 @@ module Material.Table
 > intuitive for the user.
 
 See also the
-[Material Design Specification]([https://www.google.com/design/spec/components/data-tables.html).
+[Material Design Specification](https://www.google.com/design/spec/components/data-tables.html).
 
 Refer to
-[this this](https://debois.github.io/elm-mdl/#tables)
+[this site](https://debois.github.io/elm-mdl/#tables)
 for a live demo.
 
 # HTML
@@ -55,7 +55,7 @@ The following options have effect only when applied in the header row.
 
 import Html exposing (Html, Attribute)
 import Material.Options as Options exposing (Property, cs, nop, when)
-import Material.Options.Internal as Internal
+import Material.Internal.Options as Internal
 
 
 {-| Main table constructor. Example use:
@@ -196,7 +196,7 @@ th options html =
     in
         Internal.apply summary
             Html.th
-            [ cs "mdl-data-table__cell--non-numeric" |> when config.numeric 
+            [ cs "mdl-data-table__cell--non-numeric" |> when (not config.numeric) 
             , case config.sorted of
                 Just Ascending ->
                     cs "mdl-data-table__header--sorted-ascending"
@@ -211,7 +211,8 @@ th options html =
             html
 
 
-{-| Containing column is interpreted as numeric when used as sorting key
+{-| Containing column is interpreted as 
+when used as sorting key
 -}
 numeric : Property { a | numeric : Bool } m
 numeric =
@@ -275,7 +276,7 @@ td options html =
     in
         Internal.apply summary
             Html.td
-            [ cs "mdl-data-table__cell--non-numeric" |> when config.numeric 
+            [ cs "mdl-data-table__cell--non-numeric" |> when (not config.numeric)
             ]
             []
             html

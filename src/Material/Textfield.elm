@@ -5,6 +5,7 @@ module Material.Textfield
         , floatingLabel
         , error
         , value
+        , defaultValue
         , disabled
         , password
         , render
@@ -16,13 +17,16 @@ module Material.Textfield
         , email
         , autofocus
         , maxlength
+        , maxRows
         , expandable
         , expandableIcon
         , Model
         , defaultModel
-        , Msg(..)
+        , Msg
         , update
         , view
+        , Config
+        , defaultConfig
         )
 
 
@@ -55,7 +59,7 @@ for a live demo.
 @docs render
 
 # Options
-@docs Property, value
+@docs Property, Config, defaultConfig, value, defaultValue
 
 ## Appearance
 
@@ -63,7 +67,7 @@ for a live demo.
 
 ## Html attributes
 @docs disabled, rows, cols
-@docs autofocus, maxlength
+@docs autofocus, maxlength, maxRows
 
 @docs password, email, textarea, text_
 @docs expandable, expandableIcon
@@ -76,14 +80,20 @@ for a live demo.
 
 -}
 
-import Html exposing (div, span, Html, text)
 import Html.Attributes exposing (class, type_, style)
-import Html.Events exposing (targetValue)
+import Html.Events exposing (targetValue, keyCode, defaultOptions)
+import Html exposing (div, span, Html, text)
 import Json.Decode as Decoder
-import Material.Component as Component exposing (Index, Indexed)
+import Material.Internal.Textfield exposing (Msg(..))
+import Material.Msg exposing (Index) 
+import Material.Component as Component exposing (Indexed)
 import Material.Options as Options exposing (cs, css, nop, Style, when)
-import Material.Options.Internal as Internal
+import Material.Internal.Options as Internal
 import Material.Icon as Icon
+import Material.Internal.Options as Internal
+import Material.Internal.Textfield exposing (Msg(..))
+import Material.Msg
+import Material.Options as Options exposing (cs, css, nop, Style, when)
 
 
 -- OPTIONS
@@ -96,32 +106,40 @@ type Kind
     | Email
 
 
+{-| TODO
+-}
 type alias Config m =
     { labelText : Maybe String
     , labelFloat : Bool
     , error : Maybe String
     , value : Maybe String
+    , defaultValue : Maybe String
     , disabled : Bool
     , kind : Kind
     , expandable : Maybe String
     , expandableIcon : String
     , input : List (Options.Style m)
     , container : List (Options.Style m)
+    , maxRows : Maybe Int
     }
 
 
+{-| TODO
+-}
 defaultConfig : Config m
 defaultConfig =
     { labelText = Nothing
     , labelFloat = False
     , error = Nothing
     , value = Nothing
+    , defaultValue = Nothing
     , disabled = False
     , kind = Text
     , expandable = Nothing
     , expandableIcon = "search"
     , input = []
     , container = []
+    , maxRows = Nothing
     }
 
 
@@ -184,6 +202,14 @@ value : String -> Property m
 value =
     Internal.option
         << (\str config -> { config | value = Just str })
+
+
+{-| Set the default value of the textfield
+-}
+defaultValue : String -> Property m
+defaultValue =
+    Internal.option
+        << (\str config -> { config | defaultValue = Just str })
 
 
 {-| Specifies that the input should automatically get focus when the page loads
@@ -261,6 +287,12 @@ cols k =
     Internal.input [ Options.attribute <| Html.Attributes.cols k ]
 
 
+{-| Maximum number of rows (only Textrea).
+-}
+maxRows : Int -> Property m
+maxRows k =
+    Internal.option (\config -> { config | maxRows = Just k })
+
 
 -- MODEL
 
@@ -273,7 +305,7 @@ type alias Model =
     }
 
 
-{-| Default model. No label, error, or value.
+{-| Default model. 
 -}
 defaultModel : Model
 defaultModel =
@@ -286,19 +318,17 @@ defaultModel =
 -- ACTIONS, UPDATE
 
 
-{-| Component actions. `Input` carries the new value of the field.
+{-| Component actions. 
 -}
-type Msg
-    = Blur
-    | Focus
-    | Input String
+type alias Msg
+    = Material.Internal.Textfield.Msg
 
 
 {-| Component update.
 -}
 update : x -> Msg -> Model -> ( Maybe Model, Cmd msg )
-update _ action model =
-    (case action of
+update _ msg model =
+    (case msg of
         Input str ->
             let
                 dirty =
@@ -313,8 +343,12 @@ update _ action model =
             Just { model | isFocused = False }
 
         Focus ->
-            Just { model | isFocused = True })
-    |> flip (!) [] 
+            Just { model | isFocused = True }
+
+        NoOp ->
+            Just model
+    )
+      |> flip (!) []
 
 
 
@@ -325,7 +359,7 @@ update _ action model =
 
 Be aware that styling (third argument) is applied to the outermost element
 of the textfield's implementation, and so is mostly useful for positioning
-(e.g., `margin: 0 auto;` or `align-self: flex-end`). See `Textfield.input`
+(e.g., `margin: 0 auto;` or `align-self: flex-end`). See `Options.input`
 if you need to apply styling to the underlying `<input>` element.
 -}
 view : (Msg -> m) -> Model -> List (Property m) -> x -> Html m
@@ -350,6 +384,27 @@ view lift model options _ =
 
                 Just id ->
                     Internal.attribute <| Html.Attributes.id id
+
+        preventEnterWhenMaxRowsExceeded =
+            Options.onWithOptions "keydown"
+                { defaultOptions
+                  | preventDefault = True
+                }
+                ( Decoder.map2 (,) keyCode targetValue
+                  |> Decoder.andThen (\ (keyCode, value) ->
+                      let
+                          rows =
+                              value
+                              |> String.split "\n"
+                              |> List.length
+                      in
+                      if (rows >= Maybe.withDefault 0 config.maxRows) && (keyCode == 13) then
+                            Decoder.succeed (lift NoOp)
+                          else
+                            Decoder.fail ""
+                    )
+                )
+            |> when ((config.kind == Textarea) && (config.maxRows /= Nothing))
 
         expHolder =
             case config.expandable of
@@ -379,13 +434,18 @@ view lift model options _ =
             , Internal.on1 "focus" lift Focus
             , Internal.on1 "blur" lift Blur
             , cs "mdl-textfield--floating-label" |> when config.labelFloat
-            , cs "is-invalid" |> when  (config.error /= Nothing)
-            , cs "is-dirty" |> when  (config.value /= Nothing || model.isDirty)
-            , cs "is-focused" |> when  (model.isFocused && not config.disabled)
-            , cs "is-disabled" |> when  config.disabled
+            , cs "is-invalid" |> when (config.error /= Nothing)
+            , cs "is-dirty"
+                |> when (case config.value of
+                           Just "" -> False
+                           Just _ -> True
+                           Nothing -> model.isDirty)
+            , cs "is-focused" |> when (model.isFocused && not config.disabled)
+            , cs "is-disabled" |> when config.disabled
             , cs "mdl-textfield--expandable" |> when (config.expandable /= Nothing)
+            , preventEnterWhenMaxRowsExceeded
             ] <| expHolder
-            [ Internal.applyInput summary 
+            [ Internal.applyInput summary
                 (if config.kind == Textarea then Html.textarea else Html.input)
                 [ cs "mdl-textfield__input"
                 , css "outline" "none"
@@ -397,19 +457,24 @@ view lift model options _ =
 
                     Password ->
                         Internal.attribute <| type_ "password"
+
+                    Email -> 
+                        Internal.attribute <| type_ "email" 
                     _ ->
                         nop
-                , Internal.attribute (Html.Attributes.disabled True) |> when config.disabled
+                , Internal.attribute (Html.Attributes.disabled True) 
+                    |> when config.disabled
                 , expandableId
-                , case config.value of
+                , Options.onInput (Input >> lift)
+                , Internal.attribute
+                    (Html.Attributes.value (Maybe.withDefault "" config.value))
+                  |> when (config.value /= Nothing)
+                , case config.defaultValue of
                     Nothing ->
-                        -- If user is not setting value, is we need the default input
-                        -- decoder to maintain is-dirty
-                        Options.on "input"
-                            (Decoder.map (Input >> lift) Html.Events.targetValue)
+                        Options.nop
 
                     Just v ->
-                        Html.Attributes.defaultValue v |> Internal.attribute
+                        Internal.attribute <| Html.Attributes.defaultValue v
                 ]
                 []
             , Html.label
@@ -427,7 +492,6 @@ view lift model options _ =
             ]
 
 
-
 -- COMPONENT
 
 
@@ -442,7 +506,7 @@ type alias Store s =
 {-| Component react function.
 -}
 react
-    : ( Component.Msg button Msg menu layout toggles tooltip tabs dispatch -> msg)
+    : (Material.Msg.Msg m -> msg)
     -> Msg
     -> Index
     -> Store s
@@ -450,7 +514,7 @@ react
 react =
     Component.react get
         set
-        Component.TextfieldMsg update
+        Material.Msg.TextfieldMsg update
 
 
 {-| Component render. Below is an example, assuming boilerplate setup as indicated
@@ -462,6 +526,7 @@ react =
       , Textfield.value model.age
       , Options.onInput (String.toInt >> ChangeAgeMsg)
       ]
+      []
 
 Be aware that styling (third argument) is applied to the outermost element
 of the textfield's implementation, and so is mostly useful for positioning
@@ -469,11 +534,14 @@ of the textfield's implementation, and so is mostly useful for positioning
 if you need to apply styling to the underlying `<input>` element.
 -}
 render
-    : (Component.Msg button Msg menu layout toggles tooltip tabs dispatch -> m)
+    : (Material.Msg.Msg m -> m)
     -> Index
     -> Store s
     -> List (Property m)
     -> x
     -> Html m       
-render =
-    Component.render get view Component.TextfieldMsg
+render lift index store options =
+    Component.render get view Material.Msg.TextfieldMsg lift index store
+        (Internal.dispatch lift :: options)
+
+-- TODO: use inject ^^^^^
