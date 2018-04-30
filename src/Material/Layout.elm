@@ -1000,9 +1000,9 @@ view lift model options { drawer, header, tabs, main, footer } =
                     |> (,) (toString config.selectedTab)
                     |> Just
                 , if List.length footer > 0 then
-                    div [] footer
+                    Just <| ( "footer", div [] footer )
                   else
-                    div [] []
+                    Nothing
                 ]
             ]
 
