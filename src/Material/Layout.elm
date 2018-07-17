@@ -1,37 +1,37 @@
 module Material.Layout
     exposing
-        ( init
-        , subscriptions
+        ( Contents
         , Model
-        , defaultModel
-        , Msg
-        , update
+        , Msg(ToggleDrawer)
         , Property
+        , defaultModel
         , fixedDrawer
-        , fixedTabs
         , fixedHeader
-        , rippleTabs
-        , waterfall
-        , seamed
-        , scrolling
-        , selectedTab
-        , onSelectTab
-        , row
-        , spacer
-        , title
-        , navigation
-        , link
+        , fixedTabs
         , href
+        , init
+        , link
+        , mainId
+        , navigation
+        , onSelectTab
+        , react
+        , render
+        , rippleTabs
+        , row
+        , scrolling
+        , seamed
+        , selectedTab
         , setTabsWidth
-        , Contents
-        , view
+        , spacer
         , sub0
         , subs
-        , render
-        , react
+        , subscriptions
+        , title
         , toggleDrawer
         , transparentHeader
-        , mainId
+        , update
+        , view
+        , waterfall
         )
 
 {-| From the
@@ -154,23 +154,20 @@ be (assuming a tab width of 1384 pixels):
 
 -}
 
+import DOM
 import Dict exposing (Dict)
-import DOM
-import DOM
+import Html exposing (..)
 import Html.Attributes exposing (class, classList, tabindex)
 import Html.Events as Events exposing (on)
-import Html exposing (..)
 import Html.Keyed as Keyed
 import Json.Decode as Decoder exposing (field)
 import Material.Component as Component exposing (Indexed, indexed, render1, subs)
-import Material.Helpers as Helpers exposing (filter, delay, pure, map1st, map2nd)
+import Material.Helpers as Helpers exposing (delay, filter, map1st, map2nd, pure)
 import Material.Icon as Icon
-import Material.Internal.Layout exposing (Msg(..))
 import Material.Internal.Layout exposing (Msg(..), TabScrollState)
 import Material.Internal.Options as Internal
-import Material.Msg
 import Material.Msg exposing (Index)
-import Material.Options as Options exposing (Style, cs, nop, css, when, styled, id)
+import Material.Options as Options exposing (Style, cs, css, id, nop, styled, when)
 import Material.Ripple as Ripple
 import Task
 import Window
@@ -187,7 +184,7 @@ init =
         measureScreenSize =
             Task.perform Resize Window.width
     in
-        ( defaultModel, measureScreenSize )
+    ( defaultModel, measureScreenSize )
 
 
 {-| Layout subscribes to changes in viewport size.
@@ -220,10 +217,10 @@ setTabsWidth_ width model =
         x =
             model.tabScrollState
     in
-        { model
-            | tabScrollState =
-                { x | width = Just width }
-        }
+    { model
+        | tabScrollState =
+            { x | width = Just width }
+    }
 
 
 {-| HTML id of main contents container. Useful for, e.g., scroll-to-top.
@@ -303,9 +300,9 @@ update_ f action model =
                                     tabScrollState =
                                         model.tabScrollState
                                 in
-                                    { tabScrollState
-                                        | canScrollRight = tabsWidth + (2 * 56) {- chevrons -} > width
-                                    }
+                                { tabScrollState
+                                    | canScrollRight = tabsWidth + (2 * 56) {- chevrons -} > width
+                                }
                             )
                         |> Maybe.withDefault model.tabScrollState
 
@@ -313,21 +310,21 @@ update_ f action model =
                    idea whether they scroll or not.
                 -}
             in
-                if
-                    isSmall
-                        == model.isSmallScreen
-                        && tabScrollState.canScrollRight
-                        == model.tabScrollState.canScrollRight
-                then
-                    Nothing
-                else
-                    Just <|
-                        pure
-                            { model
-                                | isSmallScreen = isSmall
-                                , isDrawerOpen = not isSmall && model.isDrawerOpen
-                                , tabScrollState = tabScrollState
-                            }
+            if
+                isSmall
+                    == model.isSmallScreen
+                    && tabScrollState.canScrollRight
+                    == model.tabScrollState.canScrollRight
+            then
+                Nothing
+            else
+                Just <|
+                    pure
+                        { model
+                            | isSmallScreen = isSmall
+                            , isDrawerOpen = not isSmall && model.isDrawerOpen
+                            , tabScrollState = tabScrollState
+                        }
 
         ToggleDrawer ->
             Just <| pure { model | isDrawerOpen = not model.isDrawerOpen }
@@ -360,19 +357,19 @@ update_ f action model =
                 isScrolled =
                     0.0 < offset
             in
-                if isScrolled /= model.isScrolled then
-                    update_ f
-                        (TransitionHeader { toCompact = isScrolled, fixedHeader = fixedHeader })
-                        { model | isScrolled = isScrolled }
-                else
-                    Nothing
+            if isScrolled /= model.isScrolled then
+                update_ f
+                    (TransitionHeader { toCompact = isScrolled, fixedHeader = fixedHeader })
+                    { model | isScrolled = isScrolled }
+            else
+                Nothing
 
         TransitionHeader { toCompact, fixedHeader } ->
             if not model.isAnimating then
                 Just
                     ( { model
                         | isCompact = toCompact
-                        , isAnimating = (not model.isSmallScreen) || fixedHeader
+                        , isAnimating = not model.isSmallScreen || fixedHeader
                       }
                     , Cmd.none
                     )
@@ -616,90 +613,90 @@ tabsView lift config model ( tabs, tabStyles ) =
                         Right ->
                             "right"
             in
-                styled div
-                    [ cs "mdl-layout__tab-bar-button"
-                    , cs ("mdl-layout__tab-bar-" ++ dir ++ "-button")
-                    , (cs "is-active")
-                        |> when
-                            ((direction == Left && model.tabScrollState.canScrollLeft)
-                                || (direction == Right && model.tabScrollState.canScrollRight)
-                            )
-                    , Options.many tabStyles
-                    ]
-                    [ Icon.view ("chevron_" ++ dir)
-                        [ Icon.size24
-                        , Html.Attributes.attribute
-                            "onclick"
-                            ("document.getElementsByClassName('mdl-layout__tab-bar')[0].scrollLeft += " ++ toString offset)
-                            |> Internal.attribute
-                        ]
-                    ]
-    in
-        Options.div
-            [ cs "mdl-layout__tab-bar-container" ]
-            [ chevron Left -100
-            , Options.div
-                [ cs "mdl-layout__tab-bar"
-                , css "position" "relative"
-
-                -- Workaround for debois/elm-dom#4.
-                , css "scroll-behavior" "smooth"
-                , if config.rippleTabs then
-                    Options.many
-                        [ cs "mdl-js-ripple-effect"
-                        , cs "mds-js-ripple-effect--ignore-events"
-                        ]
-                  else
-                    nop
-                , if config.mode == Standard then
-                    cs "is-casting-shadow"
-                  else
-                    nop
+            styled div
+                [ cs "mdl-layout__tab-bar-button"
+                , cs ("mdl-layout__tab-bar-" ++ dir ++ "-button")
+                , cs "is-active"
+                    |> when
+                        ((direction == Left && model.tabScrollState.canScrollLeft)
+                            || (direction == Right && model.tabScrollState.canScrollRight)
+                        )
                 , Options.many tabStyles
-                , Internal.attribute <|
-                    on "scroll"
-                        (DOM.target
-                            (Decoder.map3
-                                (\scrollWidth clientWidth scrollLeft ->
-                                    { canScrollLeft = scrollLeft > 0
-                                    , canScrollRight = scrollWidth - clientWidth > scrollLeft + 1
-                                    , width = Just scrollWidth
-                                    }
-                                        |> ScrollTab
-                                        |> lift
-                                )
-                                (field "scrollWidth" Decoder.float)
-                                (field "clientWidth" Decoder.float)
-                                (field "scrollLeft" Decoder.float)
-                            )
-                        )
                 ]
-                (tabs
-                    |> List.indexedMap
-                        (\tabIndex tab ->
-                            filter a
-                                [ classList
-                                    [ ( "mdl-layout__tab", True )
-                                    , ( "is-active", tabIndex == config.selectedTab )
-                                    ]
-                                , config.onSelectTab
-                                    |> Maybe.map ((|>) tabIndex)
-                                    |> Maybe.withDefault Helpers.noAttr
-                                ]
-                                [ Just tab
-                                , if config.rippleTabs then
-                                    Dict.get tabIndex model.ripples
-                                        |> Maybe.withDefault Ripple.model
-                                        |> Ripple.view [ class "mdl-layout__tab-ripple-container" ]
-                                        |> Html.map (Ripple tabIndex >> lift)
-                                        |> Just
-                                  else
-                                    Nothing
-                                ]
+                [ Icon.view ("chevron_" ++ dir)
+                    [ Icon.size24
+                    , Html.Attributes.attribute
+                        "onclick"
+                        ("document.getElementsByClassName('mdl-layout__tab-bar')[0].scrollLeft += " ++ toString offset)
+                        |> Internal.attribute
+                    ]
+                ]
+    in
+    Options.div
+        [ cs "mdl-layout__tab-bar-container" ]
+        [ chevron Left -100
+        , Options.div
+            [ cs "mdl-layout__tab-bar"
+            , css "position" "relative"
+
+            -- Workaround for debois/elm-dom#4.
+            , css "scroll-behavior" "smooth"
+            , if config.rippleTabs then
+                Options.many
+                    [ cs "mdl-js-ripple-effect"
+                    , cs "mds-js-ripple-effect--ignore-events"
+                    ]
+              else
+                nop
+            , if config.mode == Standard then
+                cs "is-casting-shadow"
+              else
+                nop
+            , Options.many tabStyles
+            , Internal.attribute <|
+                on "scroll"
+                    (DOM.target
+                        (Decoder.map3
+                            (\scrollWidth clientWidth scrollLeft ->
+                                { canScrollLeft = scrollLeft > 0
+                                , canScrollRight = scrollWidth - clientWidth > scrollLeft + 1
+                                , width = Just scrollWidth
+                                }
+                                    |> ScrollTab
+                                    |> lift
+                            )
+                            (field "scrollWidth" Decoder.float)
+                            (field "clientWidth" Decoder.float)
+                            (field "scrollLeft" Decoder.float)
                         )
-                )
-            , chevron Right 100
+                    )
             ]
+            (tabs
+                |> List.indexedMap
+                    (\tabIndex tab ->
+                        filter a
+                            [ classList
+                                [ ( "mdl-layout__tab", True )
+                                , ( "is-active", tabIndex == config.selectedTab )
+                                ]
+                            , config.onSelectTab
+                                |> Maybe.map ((|>) tabIndex)
+                                |> Maybe.withDefault Helpers.noAttr
+                            ]
+                            [ Just tab
+                            , if config.rippleTabs then
+                                Dict.get tabIndex model.ripples
+                                    |> Maybe.withDefault Ripple.model
+                                    |> Ripple.view [ class "mdl-layout__tab-ripple-container" ]
+                                    |> Html.map (Ripple tabIndex >> lift)
+                                    |> Just
+                              else
+                                Nothing
+                            ]
+                    )
+            )
+        , chevron Right 100
+        ]
 
 
 headerView :
@@ -729,31 +726,31 @@ headerView lift config model hasHeader hasDrawer ( drawerButton, rows, tabs ) =
                 Waterfall False ->
                     cs "mdl-layout__header--waterfall"
     in
-        Options.styled Html.header
-            [ cs "mdl-layout__header"
-            , css "min-height" "48px" |> when (not hasHeader && not hasDrawer)
-            , when
-                (config.mode
-                    == Standard
-                    || (isWaterfall config.mode && model.isCompact)
-                )
-                (cs "is-casting-shadow")
-            , when model.isAnimating (cs "is-animating")
-            , when model.isCompact (cs "is-compact")
-            , mode
-            , when config.transparentHeader (cs "mdl-layout__header--transparent")
-            , Options.onClick
-                (TransitionHeader { toCompact = False, fixedHeader = config.fixedHeader }
-                    |> lift
-                )
-            , Options.on "transitionend" (Decoder.succeed <| lift TransitionEnd)
-            ]
-            (List.concatMap (\x -> x)
-                [ toList drawerButton
-                , rows
-                , toList tabs
-                ]
+    Options.styled Html.header
+        [ cs "mdl-layout__header"
+        , css "min-height" "48px" |> when (not hasHeader && not hasDrawer)
+        , when
+            (config.mode
+                == Standard
+                || (isWaterfall config.mode && model.isCompact)
             )
+            (cs "is-casting-shadow")
+        , when model.isAnimating (cs "is-animating")
+        , when model.isCompact (cs "is-compact")
+        , mode
+        , when config.transparentHeader (cs "mdl-layout__header--transparent")
+        , Options.onClick
+            (TransitionHeader { toCompact = False, fixedHeader = config.fixedHeader }
+                |> lift
+            )
+        , Options.on "transitionend" (Decoder.succeed <| lift TransitionEnd)
+        ]
+        (List.concatMap (\x -> x)
+            [ toList drawerButton
+            , rows
+            , toList tabs
+            ]
+        )
 
 
 onKeypressFilterSpaceAndEnter : Html.Attribute x
@@ -804,20 +801,21 @@ drawerButton lift isVisible =
                 }
                 (Decoder.map
                     (lift
-                        << \key ->
-                            case key of
-                                32
-                                {- SPACE -}
-                                ->
-                                    ToggleDrawer
+                        << (\key ->
+                                case key of
+                                    32
+                                    {- SPACE -}
+                                    ->
+                                        ToggleDrawer
 
-                                13
-                                {- ENTER -}
-                                ->
-                                    ToggleDrawer
+                                    13
+                                    {- ENTER -}
+                                    ->
+                                        ToggleDrawer
 
-                                _ ->
-                                    NOP
+                                    _ ->
+                                        NOP
+                           )
                     )
                     Events.keyCode
                 )
@@ -921,90 +919,91 @@ view lift model options { drawer, header, tabs, main, footer } =
             else
                 Just (tabsView lift config model tabs)
     in
-        div
-            [ classList
-                [ ( "mdl-layout__container", True )
-                , ( "has-scrolling-header", config.mode == Scrolling )
-                ]
+    div
+        [ classList
+            [ ( "mdl-layout__container", True )
+            , ( "has-scrolling-header", config.mode == Scrolling )
             ]
-            [ filter (Keyed.node "div")
-                ([ Just <|
-                    classList
-                        [ ( "mdl-layout ", True )
-                        , ( "is-upgraded", True )
-                        , ( "is-small-screen", model.isSmallScreen )
-                        , ( "has-drawer", hasDrawer )
-                        , ( "has-tabs", hasTabs )
-                        , ( "mdl-js-layout", True )
-                        , ( "mdl-layout--fixed-drawer", config.fixedDrawer && hasDrawer )
-                        , ( "mdl-layout--fixed-header", config.fixedHeader && (hasHeader || hasTabs) )
-                        , ( "mdl-layout--fixed-tabs", config.fixedTabs && hasTabs )
-                        ]
+        ]
+        [ filter (Keyed.node "div")
+            ([ Just <|
+                classList
+                    [ ( "mdl-layout ", True )
+                    , ( "is-upgraded", True )
+                    , ( "is-small-screen", model.isSmallScreen )
+                    , ( "has-drawer", hasDrawer )
+                    , ( "has-tabs", hasTabs )
+                    , ( "mdl-js-layout", True )
+                    , ( "mdl-layout--fixed-drawer", config.fixedDrawer && hasDrawer )
+                    , ( "mdl-layout--fixed-header", config.fixedHeader && (hasHeader || hasTabs) )
+                    , ( "mdl-layout--fixed-tabs", config.fixedTabs && hasTabs )
+                    ]
 
-                 {- MDL has code to close drawer on ESC, but it seems to be
-                    non-operational. We fix it here. Elm 0.17 doesn't give us a way to
-                    catch global keyboard events, but we can reasonably assume something inside
-                    mdl-layout__container is focused.
-                 -}
-                 , if drawerIsVisible then
-                    on "keydown"
-                        (Decoder.map
-                            (lift
-                                << \key ->
+             {- MDL has code to close drawer on ESC, but it seems to be
+                non-operational. We fix it here. Elm 0.17 doesn't give us a way to
+                catch global keyboard events, but we can reasonably assume something inside
+                mdl-layout__container is focused.
+             -}
+             , if drawerIsVisible then
+                on "keydown"
+                    (Decoder.map
+                        (lift
+                            << (\key ->
                                     if key == 27 then
                                         ToggleDrawer
                                     else
                                         NOP
-                            )
-                            Events.keyCode
+                               )
                         )
-                        |> Just
-                   else
-                    Nothing
-                 ]
-                    |> List.filterMap identity
-                )
-                [ if hasHeader || hasTabs then
-                    headerView lift config model hasHeader hasDrawer ( headerDrawerButton, header, tabsElems )
-                        |> (,) "elm-mdl-header"
-                        |> Just
-                  else
-                    Nothing
-                , if not hasDrawer then
-                    Nothing
-                  else
-                    Just ( "elm-mdl-drawer", drawerView lift drawerIsVisible drawer )
-                , if not hasDrawer then
-                    Nothing
-                  else
-                    Just ( "elm-mdl-obfuscator", obfuscator lift drawerIsVisible )
-                , contentDrawerButton |> Maybe.map ((,) "elm-drawer-button")
-                , Options.styled main_
-                    [ id mainId
-                    , cs "mdl-layout__content"
-                    , css "overflow-y" "visible" |> when (config.mode == Scrolling && config.fixedHeader)
-                    , css "overflow-x" "visible" |> when (config.mode == Scrolling && config.fixedHeader)
-                    , css "overflow" "visible" |> when (config.mode == Scrolling && config.fixedHeader)
-
-                    {- Above three lines fixes upstream bug #4180. -}
-                    , when
-                        (isWaterfall config.mode)
-                        ((on "scroll" >> Internal.attribute)
-                            (Decoder.map
-                                (ScrollPane config.fixedHeader >> lift)
-                                (DOM.target DOM.scrollTop)
-                            )
-                        )
-                    ]
-                    main
-                    |> (,) (toString config.selectedTab)
+                        Events.keyCode
+                    )
                     |> Just
-                , if List.length footer > 0 then
-                    Just <| ( "footer", div [] footer )
-                  else
-                    Nothing
+               else
+                Nothing
+             ]
+                |> List.filterMap identity
+            )
+            [ if hasHeader || hasTabs then
+                headerView lift config model hasHeader hasDrawer ( headerDrawerButton, header, tabsElems )
+                    |> (,) "elm-mdl-header"
+                    |> Just
+              else
+                Nothing
+            , if not hasDrawer then
+                Nothing
+              else
+                Just ( "elm-mdl-drawer", drawerView lift drawerIsVisible drawer )
+            , if not hasDrawer then
+                Nothing
+              else
+                Just ( "elm-mdl-obfuscator", obfuscator lift drawerIsVisible )
+            , contentDrawerButton |> Maybe.map ((,) "elm-drawer-button")
+            , Options.styled main_
+                [ id mainId
+                , cs "mdl-layout__content"
+                , css "overflow-y" "visible" |> when (config.mode == Scrolling && config.fixedHeader)
+                , css "overflow-x" "visible" |> when (config.mode == Scrolling && config.fixedHeader)
+                , css "overflow" "visible" |> when (config.mode == Scrolling && config.fixedHeader)
+
+                {- Above three lines fixes upstream bug #4180. -}
+                , when
+                    (isWaterfall config.mode)
+                    ((on "scroll" >> Internal.attribute)
+                        (Decoder.map
+                            (ScrollPane config.fixedHeader >> lift)
+                            (DOM.target DOM.scrollTop)
+                        )
+                    )
                 ]
+                main
+                |> (,) (toString config.selectedTab)
+                |> Just
+            , if List.length footer > 0 then
+                Just <| ( "footer", div [] footer )
+              else
+                Nothing
             ]
+        ]
 
 
 
